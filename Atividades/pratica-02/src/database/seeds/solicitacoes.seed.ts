@@ -1,31 +1,73 @@
 import 'dotenv/config';
 import dataSource from '../data-source';
+import { CentroCusto } from '../../centro-custos/centro-custos.entity';
 import { Solicitacao } from '../../solicitacoes/solicitacao.entity';
+
+const CODIGO_CENTRO_CUSTO = 'CC-1234';
 
 const dados = [
   {
     titulo: 'Aquisição de monitor',
-    centroCusto: 'TI-DEV',
+    valorEstimado: '1200.00',
     prioridade: 'normal' as const,
   },
   {
-    titulo: 'Substituição de servidor',
-    centroCusto: 'TI-INFRA',
+    titulo: 'Aquisição de servidores',
+    valorEstimado: '6000.00',
     prioridade: 'urgente' as const,
   },
 ];
 
 async function executar() {
   await dataSource.initialize();
-  const repository = dataSource.getRepository(Solicitacao);
+
+  const centroCustoRepository =
+    dataSource.getRepository(CentroCusto);
+
+  const solicitacaoRepository =
+    dataSource.getRepository(Solicitacao);
+
+  let centroCusto =
+    await centroCustoRepository.findOneBy({
+      codigo: CODIGO_CENTRO_CUSTO,
+    });
+
+  if (!centroCusto) {
+    centroCusto = await centroCustoRepository.save(
+      centroCustoRepository.create({
+        codigo: CODIGO_CENTRO_CUSTO,
+        saldoDisponivel: '5000.00',
+        versao: 1,
+      }),
+    );
+  }
 
   for (const item of dados) {
-    const existente = await repository.findOneBy({ titulo: item.titulo });
+    const existente =
+      await solicitacaoRepository
+        .createQueryBuilder('solicitacao')
+        .leftJoin('solicitacao.centroCusto', 'centroCusto')
+        .where(
+          'solicitacao.titulo = :titulo',
+          {
+            titulo: item.titulo,
+          },
+        )
+        .andWhere(
+          'centroCusto.id = :centroCustoId',
+          {
+            centroCustoId: centroCusto.id,
+          },
+        )
+        .getOne();
 
     if (!existente) {
-      await repository.save(
-        repository.create({
-          ...item,
+      await solicitacaoRepository.save(
+        solicitacaoRepository.create({
+          titulo: item.titulo,
+          centroCusto,
+          valorEstimado: item.valorEstimado,
+          prioridade: item.prioridade,
           status: 'pendente',
         }),
       );

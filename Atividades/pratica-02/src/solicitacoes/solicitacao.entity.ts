@@ -2,10 +2,13 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinColumn,
+  ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
   VersionColumn,
 } from 'typeorm';
+import { CentroCusto } from '../centro-custos/centro-custos.entity';
 
 export type StatusSolicitacao = 'pendente' | 'aprovada' | 'rejeitada';
 export type NivelPrioridade = 'normal' | 'urgente';
@@ -18,8 +21,20 @@ export class Solicitacao {
   @Column({ type: 'varchar', length: 150 })
   titulo!: string;
 
-  @Column({ type: 'varchar', length: 30 })
-  centroCusto!: string;
+  @ManyToOne(() => CentroCusto, {
+    nullable: false,
+    onDelete: 'RESTRICT',
+  })
+  @JoinColumn({ name: 'centro_custo_id' })
+  centroCusto!: CentroCusto;
+
+  @Column({
+    name: 'valor_estimado',
+    type: 'numeric',
+    precision: 12,
+    scale: 2,
+  })
+  valorEstimado!: string;
 
   @Column({ type: 'varchar', length: 10, default: 'normal' })
   prioridade!: NivelPrioridade;
